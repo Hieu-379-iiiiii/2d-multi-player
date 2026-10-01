@@ -18,6 +18,9 @@ offset_top = 284.0
 offset_right = 920.0
 offset_bottom = 529.0
 
+[node name="IPLable" type="Label" parent="VBoxContainer" unique_id=1149225868]
+layout_mode = 2
+
 [node name="server" type="Button" parent="VBoxContainer" unique_id=124443422]
 layout_mode = 2
 text = "server"
@@ -25,6 +28,9 @@ text = "server"
 [node name="client" type="Button" parent="VBoxContainer" unique_id=1840622771]
 layout_mode = 2
 text = "client"
+
+[node name="IPLineEdit" type="LineEdit" parent="VBoxContainer" unique_id=69307931]
+layout_mode = 2
 
 [connection signal="pressed" from="VBoxContainer/server" to="." method="_on_server_pressed"]
 [connection signal="pressed" from="VBoxContainer/client" to="." method="_on_client_pressed"]

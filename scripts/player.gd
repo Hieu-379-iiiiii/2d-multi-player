@@ -5,7 +5,8 @@ const SPEED = 500.0
 
 var owner_id: int
 var is_authority: bool:
-	get:return !NetworkHandler.is_server && owner_id == ClientNetworkGlobal.id
+	get: 
+		return owner_id == ClientNetworkGlobal.id
 	
 func _enter_tree() -> void:
 	ServerNetworkGlobal.handle_player_position.connect(server_handle_player_position)

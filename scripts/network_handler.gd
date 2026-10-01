@@ -1,85 +1,116 @@
 extends Node
 
-# server signal
+# server signals
 signal on_peer_connected(peer_id: int)
 signal on_peer_disconnected(peer_id: int)
 signal on_server_packet(peer_id: int , data: PackedByteArray)
-
 
 # client signals
 signal on_connected_to_server()
 signal on_disconnected_from_server()
 signal on_client_packet(data: PackedByteArray)
-#server var
+
+# server var
 var available_peer_ids: Array = range(255, -1, -1)
 var client_peers: Dictionary[int, ENetPacketPeer]
-#client var
+var connection: ENetConnection # Server host connection
+
+# client var
+var client_connection: ENetConnection # Used if client or hosting-as-client
 var server_peer: ENetPacketPeer
 
-#General var
-var connection: ENetConnection
+# General var
 var is_server: bool = false
+var is_host: bool = false
 
 func _process(delta: float) -> void:
-	if (connection == null): return
-	handle_events()
-	
-func handle_events() -> void:
+	if connection != null:
+		handle_server_events()
+	if client_connection != null and not is_server:
+		handle_client_events()
+	elif is_host and client_connection != null:
+		handle_client_events()
+
+func handle_server_events() -> void:
 	var packet_event: Array = connection.service()
+	if packet_event.is_empty(): return
+	var event_type: ENetConnection.EventType = packet_event[0]
 	
-	# Keep looping as long as service() returns an event
-	while not packet_event.is_empty():
-		var event_type: ENetConnection.EventType = packet_event[0]
-		
-		if event_type == ENetConnection.EVENT_NONE:
-			break
-			
+	while(event_type != ENetConnection.EVENT_NONE):
 		var peer: ENetPacketPeer = packet_event[1]
 		
 		match event_type:
 			ENetConnection.EVENT_ERROR:
-				push_warning("Package got unknown error")
+				push_warning("Server socket error")
 				return
-			
 			ENetConnection.EVENT_CONNECT:
-				if (is_server):
-					peer_connected(peer)
-				else:
-					connected_to_server()
-					
+				peer_connected(peer)
 			ENetConnection.EVENT_DISCONNECT:
-				if (is_server):
-					peer_disconnected(peer)
-				else:
-					disconnected_to_server()
-					return
-					
+				peer_disconnected(peer)
 			ENetConnection.EVENT_RECEIVE:
-				if (is_server):
-					on_server_packet.emit(peer.get_meta("id"), peer.get_packet())
-				else:
-					on_client_packet.emit(peer.get_packet())
-		
-		# Fetch the next event in the queue before the loop repeats
+				on_server_packet.emit(peer.get_meta("id"), peer.get_packet())
+				
 		packet_event = connection.service()
+		if packet_event.is_empty(): break
+		event_type = packet_event[0]
+
+func handle_client_events() -> void:
+	var packet_event: Array = client_connection.service()
+	if packet_event.is_empty(): return
+	var event_type: ENetConnection.EventType = packet_event[0]
+	
+	while(event_type != ENetConnection.EVENT_NONE):
+		var peer: ENetPacketPeer = packet_event[1]
 		
-func start_server(ip_address: String = "127.0.0.1", port: int = 42869) -> void:
+		match event_type:
+			ENetConnection.EVENT_ERROR:
+				push_warning("Client socket error")
+				return
+			ENetConnection.EVENT_CONNECT:
+				print("Connected to server successfully")
+				on_connected_to_server.emit()
+			ENetConnection.EVENT_DISCONNECT:
+				disconnected_to_server()
+				return
+			ENetConnection.EVENT_RECEIVE:
+				on_client_packet.emit(peer.get_packet())
+				
+		packet_event = client_connection.service()
+		if packet_event.is_empty(): break
+		event_type = packet_event[0]
+
+func get_local_ip() -> String:
+	for ip in IP.get_local_addresses():
+		if ip.begins_with("192.168.") or ip.begins_with("10.") or ip.begins_with("172."):
+			if not ip.contains(":"): # make sure it IPv4, abit limited but i'll take it
+				return ip
+	return "127.0.0.1"
+
+func start_server(ip_address: String = "0.0.0.0", port: int = 42869) -> void:
+	is_server = true
+	is_host = true
+	
+	# host bound (0.0.0.0) for LAN access
 	connection = ENetConnection.new()
 	var error: Error = connection.create_host_bound(ip_address, port)
 	if (error):
-		print("Server failed", error_string(error))
+		print("Server failed: ", error_string(error))
 		connection = null
 		return
 	
-	print("server started")
-	is_server = true
+	print("Server started on port ", port)
+	
+	# connect the host as a client to itself
+	client_connection = ENetConnection.new()
+	client_connection.create_host(1)
+	server_peer = client_connection.connect_to_host("127.0.0.1", port)
 
 func peer_connected(peer: ENetPacketPeer) -> void:
 	var peer_id: int = available_peer_ids.pop_back()
 	peer.set_meta("id", peer_id)
 	client_peers[peer_id] = peer
 	
-	print("peer conntected with id:", peer_id)
+	print("Peer connected with ID: ", peer_id)
 	on_peer_connected.emit(peer_id)
 
 func peer_disconnected(peer: ENetPacketPeer) -> void:
@@ -87,29 +118,33 @@ func peer_disconnected(peer: ENetPacketPeer) -> void:
 	available_peer_ids.push_back(peer_id)
 	client_peers.erase(peer_id)
 	
-	print("disconnected: ", peer_id)
+	print("Peer disconnected: ", peer_id)
 	on_peer_disconnected.emit(peer_id)
 
 func start_client(ip_address: String = "127.0.0.1", port: int = 42869) -> void:
-	connection = ENetConnection.new()
-	var error: Error = connection.create_host(1)
+	is_server = false
+	is_host = false
+	
+	client_connection = ENetConnection.new()
+	var error: Error = client_connection.create_host(1)
 	if (error):
-		print("Client failed", error_string(error))
-		connection = null
+		print("Client failed: ", error_string(error))
+		client_connection = null
 		return
 		
-	print("client started")
-	server_peer = connection.connect_to_host(ip_address, port)
+	print("Connecting to server at ", ip_address, "...")
+	server_peer = client_connection.connect_to_host(ip_address, port)
 	
 func disconnect_client() -> void:
-	if (is_server): return
-	server_peer.peer_disconnect()
+	if is_server: return
+	if client_connection and server_peer:
+		server_peer.peer_disconnect()
+		client_connection = null
 	
 func connected_to_server() -> void:
-	print("connect to server done")
 	on_connected_to_server.emit()
 	
 func disconnected_to_server() -> void:
-	print("disconnected from server")
+	print("Disconnected from server")
 	on_disconnected_from_server.emit()
-	connection = null
+	client_connection = null
