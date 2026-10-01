@@ -5,7 +5,8 @@ var remote_ids: Array[int]
 
 static func create(id: int, remote_ids: Array[int]) -> IDAssignment:
 	var info: IDAssignment = IDAssignment.new()
-	info.packet_type = ENetPacketPeer.FLAG_RELIABLE
+	info.packet_type = PACKET_TYPE.IP_ASSIGNMENT   # FIXED
+	info.flag = ENetPacketPeer.FLAG_RELIABLE        # FIXED
 	info.id = id
 	info.remote_ids = remote_ids
 	return info

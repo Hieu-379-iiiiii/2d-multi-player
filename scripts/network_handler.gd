@@ -26,9 +26,14 @@ func _process(delta: float) -> void:
 	
 func handle_events() -> void:
 	var packet_event: Array = connection.service()
-	var event_type: ENetConnection.EventType = packet_event[0]
 	
-	while(event_type != ENetConnection.EVENT_NONE):
+	# Keep looping as long as service() returns an event
+	while not packet_event.is_empty():
+		var event_type: ENetConnection.EventType = packet_event[0]
+		
+		if event_type == ENetConnection.EVENT_NONE:
+			break
+			
 		var peer: ENetPacketPeer = packet_event[1]
 		
 		match event_type:
@@ -41,18 +46,22 @@ func handle_events() -> void:
 					peer_connected(peer)
 				else:
 					connected_to_server()
+					
 			ENetConnection.EVENT_DISCONNECT:
 				if (is_server):
 					peer_disconnected(peer)
 				else:
 					disconnected_to_server()
 					return
+					
 			ENetConnection.EVENT_RECEIVE:
 				if (is_server):
 					on_server_packet.emit(peer.get_meta("id"), peer.get_packet())
 				else:
 					on_client_packet.emit(peer.get_packet())
-				pass
+		
+		# Fetch the next event in the queue before the loop repeats
+		packet_event = connection.service()
 		
 func start_server(ip_address: String = "127.0.0.1", port: int = 42869) -> void:
 	connection = ENetConnection.new()

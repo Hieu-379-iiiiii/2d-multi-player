@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://b4oehm8o0n08c"]
+
+[ext_resource type="PackedScene" uid="uid://co6vaoijilvff" path="res://scenes/UI.tscn" id="1_0wfyh"]
+[ext_resource type="PackedScene" uid="uid://c2hnahyjuwsd2" path="res://scenes/Player_spawner.tscn" id="2_sugp2"]
+
+[node name="Main" type="Node2D" unique_id=2136059410]
+
+[node name="Control" parent="." unique_id=1312266797 instance=ExtResource("1_0wfyh")]
+
+[node name="PlayerSpawner" parent="." unique_id=595245022 instance=ExtResource("2_sugp2")]

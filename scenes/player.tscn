@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://cq1cukryq0iuj"]
+
+[ext_resource type="Script" uid="uid://c4qfon7kydhxm" path="res://scripts/player.gd" id="1_3vyb7"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_o6rod"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_o6rod"]
+
+[node name="Player" type="CharacterBody2D" unique_id=819462204]
+script = ExtResource("1_3vyb7")
+
+[node name="MeshInstance2D" type="MeshInstance2D" parent="." unique_id=608726947]
+scale = Vector2(20, 20)
+mesh = SubResource("BoxMesh_o6rod")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=719745100]
+shape = SubResource("RectangleShape2D_o6rod")

@@ -11,13 +11,15 @@ config_version=5
 [application]
 
 config/name="2d_Multi_player"
-run/main_scene="uid://co6vaoijilvff"
+run/main_scene="uid://b4oehm8o0n08c"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
 
 [autoload]
 
 NetworkHandler="*uid://bwk7gms0c0u54"
+ClientNetworkGlobal="*uid://dmcx1l1dn35of"
+ServerNetworkGlobal="*uid://bqsvlc68m6p6o"
 
 [display]
 

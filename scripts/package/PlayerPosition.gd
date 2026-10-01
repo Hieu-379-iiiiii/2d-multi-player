@@ -5,7 +5,8 @@ var position: Vector2
 
 static func create(id: int, position: Vector2) -> PlayerPosition:
 	var info: PlayerPosition = PlayerPosition.new()
-	info.packet_type = ENetPacketPeer.FLAG_UNSEQUENCED
+	info.packet_type = PACKET_TYPE.PLAYER_POSITION # FIXED
+	info.flag = ENetPacketPeer.FLAG_UNSEQUENCED   # FIXED
 	info.id = id
 	info.position = position
 	return info
@@ -26,5 +27,5 @@ func encode()-> PackedByteArray:
 	
 func decode(data: PackedByteArray) -> void:
 	super.decode(data)
-	id = data.decode_double(1)
+	id = data.decode_u8(1)
 	position = Vector2(data.decode_float(2), data.decode_float(6))

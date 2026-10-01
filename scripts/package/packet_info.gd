@@ -1,12 +1,13 @@
 class_name PacketInfo
 
-enum PACKET_TYPE{
+enum PACKET_TYPE {
 	IP_ASSIGNMENT = 0,
 	PLAYER_POSITION = 10,
 }
 
 var packet_type: PACKET_TYPE
 var flag: int
+
 func encode() -> PackedByteArray:
 	var data: PackedByteArray
 	data.resize(1)
@@ -16,7 +17,8 @@ func encode() -> PackedByteArray:
 func decode(data: PackedByteArray) -> void:
 	packet_type = data.decode_u8(0)
 
-func send(target: ENetConnection) -> void:
+# FIXED: Changed from ENetConnection to ENetPacketPeer
+func send(target: ENetPacketPeer) -> void:
 	target.send(0, encode(), flag)
 	
 func broadcast(server: ENetConnection) -> void:
