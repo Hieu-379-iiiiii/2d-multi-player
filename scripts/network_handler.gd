@@ -80,12 +80,64 @@ func handle_client_events() -> void:
 		event_type = packet_event[0]
 
 func get_local_ip() -> String:
+	var interfaces: Array = IP.get_local_interfaces()
+	var fallback_candidates: Array[String] = []
+
+	for iface in interfaces:
+		var iface_name: String = iface.get("name", "").to_lower()
+		var friendly_name: String = iface.get("friendly", "").to_lower()
+
+		# Ignore virtual, loopback, container, and vEthernet adapters
+		if "virtual" in iface_name or "vmware" in iface_name or "vbox" in iface_name \
+		or "veth" in iface_name or "wsl" in iface_name or "loopback" in iface_name \
+		or "bluetooth" in iface_name or "hyper-v" in iface_name or "vethernet" in iface_name \
+		or "docker" in iface_name or "virtual" in friendly_name or "loopback" in friendly_name \
+		or "vethernet" in friendly_name:
+			continue
+
+		for ip in iface.get("addresses", []):
+			if is_valid_ipv4(ip):
+				if is_private_or_institution_ip(ip):
+					return ip # Preferred LAN IP
+				fallback_candidates.append(ip)
+
+	# Return public campus/institutional IPv4 if no standard private IP found
+	if not fallback_candidates.is_empty():
+		return fallback_candidates[0]
+
+	# Last resort across all raw interfaces (excluding 127.x.x.x / 169.254.x.x)
 	for ip in IP.get_local_addresses():
-		if ip.begins_with("192.168.") or ip.begins_with("10.") or ip.begins_with("172."):
-			if not ip.contains(":"): # make sure it IPv4, abit limited but i'll take it
-				return ip
+		if is_valid_ipv4(ip):
+			return ip
+
 	return "127.0.0.1"
 
+func is_valid_ipv4(ip: String) -> bool:
+	# Ignore IPv6, ALL loopback IPs (127.x.x.x), and APIPA (169.254.x.x)
+	return not (":" in ip or ip.begins_with("127.") or ip.begins_with("169.254."))
+
+func is_private_or_institution_ip(ip: String) -> bool:
+	# 10.0.0.0/8 or 192.168.0.0/16
+	if ip.begins_with("10.") or ip.begins_with("192.168."):
+		return true
+
+	# 172.16.0.0 - 172.31.255.255
+	if ip.begins_with("172."):
+		var parts: PackedStringArray = ip.split(".")
+		if parts.size() >= 2:
+			var second: int = parts[1].to_int()
+			if second >= 16 and second <= 31:
+				return true
+
+	# Carrier-Grade NAT (100.64.0.0 - 100.127.255.255)
+	if ip.begins_with("100."):
+		var parts: PackedStringArray = ip.split(".")
+		if parts.size() >= 2:
+			var second: int = parts[1].to_int()
+			if second >= 64 and second <= 127:
+				return true
+
+	return false
 func start_server(ip_address: String = "0.0.0.0", port: int = 42869) -> void:
 	is_server = true
 	is_host = true
